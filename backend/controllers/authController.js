@@ -1,6 +1,6 @@
 const db = require('../db');
 const cognito = require('../middlewares/cognito');
-const { SignUpCommand } = require('@aws-sdk/client-cognito-identity-provider');
+const { SignUpCommand, InitiateAuthCommand } = require('@aws-sdk/client-cognito-identity-provider');
 const bcrypt = require('bcrypt');
 
 exports.register = async (req, res) => {
@@ -12,8 +12,7 @@ exports.register = async (req, res) => {
       emergencyEmail,
       password,
       phone,
-      address,
-      photo
+      address
     } = req.body;
 
     // 1. Registrar usuario en Cognito
@@ -32,10 +31,10 @@ exports.register = async (req, res) => {
     // 2. Guardar datos adicionales en PostgreSQL
     const hash = await bcrypt.hash(password, 10);
     const result = await db.query(
-      `INSERT INTO Usuario (Usuario, Nombre, Contrasena, email, emergency_email, phone, address, Foto)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO Usuario (Usuario, Nombre, Contrasena, email, emergency_email, phone, address)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING Id_Usuario, Usuario, email`,
-      [username, fullName, hash, email, emergencyEmail, phone, address, photo]
+      [username, fullName, hash, email, emergencyEmail, phone, address]
     );
 
     res.status(201).json({
@@ -103,3 +102,25 @@ exports.login = async (req, res) => {
     res.status(500).json({ error: 'Error interno al iniciar sesión: ' + err.message });
   }
 };
+
+exports.updatePhoto = async (req, res) => {
+  try {
+    console.log("aqui", req.body)
+    const { username, photo } = req.body;
+    const result = await db.query(
+      'UPDATE Usuario SET Foto = $1 WHERE Usuario = $2 RETURNING Id_Usuario, Usuario, email, Foto',
+      [photo, username]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+    res.json({
+      message: 'Foto actualizada correctamente',
+      user: result.rows[0]
+    });
+  } catch (err) {
+    console.error('Error en updatePhoto:', err);
+    res.status(500).json({ error: 'Error al actualizar la foto: ' + err.message });
+  }
+}

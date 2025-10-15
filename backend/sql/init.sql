@@ -7,7 +7,7 @@ CREATE TABLE Usuario(
     emergency_email VARCHAR(150),
     phone VARCHAR(20),
     address TEXT,
-    Foto VARCHAR(150) NOT NULL,
+    Foto VARCHAR(150)
 );
 
 CREATE TABLE Mood (

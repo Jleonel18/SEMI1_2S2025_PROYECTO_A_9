@@ -26,14 +26,15 @@ const Register = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-  
+
     if (password !== confirmPassword) {
       alert('Las contraseñas no coinciden.');
       return;
     }
-  
+
+    // Paso 1: Registrar primero en backend (sin photo aún)
     try {
-      const response = await fetch('http://localhost:4000/api/auth/register', {
+      const registerResponse = await fetch('http://localhost:4000/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -44,32 +45,63 @@ const Register = () => {
           password,
           phone,
           address,
-          photo,
+          // photo: dejaremos vacío o null por ahora; lo actualizaremos después
         }),
       });
-  
-      // Intenta leer la respuesta como texto primero
-      const text = await response.text();
-      console.log('Respuesta del servidor:', text);
-  
-      let data;
+
+      const registerText = await registerResponse.text();
+      let registerData;
       try {
-        data = JSON.parse(text);
+        registerData = JSON.parse(registerText);
       } catch (err) {
-        console.error('No se pudo parsear JSON:', err);
         alert('Error inesperado del servidor (no JSON válido)');
         return;
       }
-  
-      if (response.ok) {
-        alert('Registro exitoso 🎉');
-        window.location.href = '/login';
-      } else {
-        alert('Error: ' + data.error);
+
+      if (!registerResponse.ok) {
+        alert('Error en registro: ' + registerData.error); // Ej: "Usuario ya existe"
+        return; // Sale aquí si falla, sin subir imagen
       }
+
+      // Paso 2: Si registro OK, subir imagen a Lambda
+      if (photo) { // Asegura que hay foto
+        console.log(photo)
+        const uploadResponse = await fetch("https://xwe6937cvk.execute-api.us-east-2.amazonaws.com/default/cargar", {
+          method: "POST",
+          body: JSON.stringify({ username: username, image_base64: photo }), // Ajusta clave si tu Lambda usa 'image'
+          headers: { "Content-Type": "application/json" }
+        });
+
+        const uploadText = await uploadResponse.text();
+        let uploadData;
+        try {
+          uploadData = JSON.parse(uploadText);
+        } catch (err) {
+          alert('Error al subir imagen');
+          return;
+        }
+
+        if (!uploadResponse.ok) {
+          alert('Error al subir imagen: ' + uploadData.error);
+          // Opcional: Maneja rollback en backend (borrar usuario si falla upload)
+          return;
+        }
+
+        // Opcional: Actualiza el usuario en backend con la URL de la imagen
+        const updateResponse = await fetch('http://localhost:4000/api/auth/update-photo', { // Crea este endpoint en backend
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, photo: uploadData.url || `https://mindbalance.s3.amazonaws.com/${username}.jpg` }),
+        });
+        // Maneja errores aquí si quieres
+      }
+
+      alert('Registro exitoso 🎉');
+      window.location.href = '/login';
+
     } catch (error) {
-      console.error('Error en registro:', error);
-      alert('No se pudo registrar el usuario.');
+      console.error('Error:', error);
+      alert('No se pudo completar el registro.');
     }
   };
   
@@ -238,18 +270,16 @@ const Register = () => {
           </div>
 
           <div className="relative">
-            <label htmlFor="photo" className="block text-sm font-medium text-gray-700 mb-1">
-              URL de Foto de Perfil
-            </label>
+            <label htmlFor="photo" className="block text-sm font-medium text-gray-700 mb-1">Foto de Perfil</label>
             <div className="relative">
+              <PhotoIcon className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
               <input
-                type="text"
+                type="file"
                 id="photo"
-                value={photo || ''}
-                onChange={(e) => setPhoto(e.target.value)}
-                className="w-full pl-3 pr-3 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition"
-                placeholder="https://ejemplo.com/mi-foto.jpg"
-                
+                accept="image/*"
+                onChange={handlePhotoChange}
+                className="w-full pl-10 pr-3 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
+                required
               />
             </div>
           </div>
