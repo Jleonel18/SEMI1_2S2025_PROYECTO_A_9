@@ -178,7 +178,7 @@ const Register = () => {
                   type="password"
                   id="password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {console.log('Password input:', e.target.value); setPassword(e.target.value)}}
                   className="w-full pl-10 pr-3 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition"
                   placeholder="Crea una contraseña segura"
                   required

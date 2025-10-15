@@ -1,15 +1,23 @@
-const jwt = require('jsonwebtoken');
+const { CognitoJwtVerifier } = require('aws-jwt-verify');
 
-module.exports = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader) return res.status(401).json({ error: 'Falta token' });
+const verifier = CognitoJwtVerifier.create({
+  userPoolId: process.env.COGNITO_USER_POOL_ID,
+  clientId: process.env.COGNITO_CLIENT_ID,
+  tokenUse: 'id' // o 'access' según el token que uses
+});
 
-  const token = authHeader.split(' ')[1];
+const authenticateToken = async (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) return res.status(401).json({ error: 'Token no proporcionado' });
+
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
+    const payload = await verifier.verify(token);
+    req.user = payload; // Contiene información del usuario
     next();
   } catch (err) {
-    return res.status(403).json({ error: 'Token inválido o expirado' });
+    console.error('Error al verificar token:', err);
+    res.status(403).json({ error: 'Token inválido' });
   }
 };
+
+module.exports = authenticateToken;
