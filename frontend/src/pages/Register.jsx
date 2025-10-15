@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { UserIcon, EnvelopeIcon, PhoneIcon, LockClosedIcon, HomeIcon, PhotoIcon } from '@heroicons/react/24/outline';
+import { registerUser } from '../services/authService';
 
 const Register = () => {
   const [fullName, setFullName] = useState('');
@@ -9,7 +10,7 @@ const Register = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState(''); // Added confirm password state
   const [phone, setPhone] = useState('');
-  const [photo, setPhoto] = useState(null);
+  const [photo, setPhoto] = useState('');
   const [address, setAddress] = useState('');
 
   const handlePhotoChange = (e) => {
@@ -23,17 +24,57 @@ const Register = () => {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Basic validation for password match
+  
     if (password !== confirmPassword) {
-      alert('Las contraseñas no coinciden. Por favor, inténtalo de nuevo.');
+      alert('Las contraseñas no coinciden.');
       return;
     }
-    console.log('Register:', {
-      fullName, username, email, emergencyEmail, password, phone, photo, address
-    });
+  
+    try {
+      const response = await fetch('http://localhost:4000/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fullName,
+          username,
+          email,
+          emergencyEmail,
+          password,
+          phone,
+          address,
+          photo,
+        }),
+      });
+  
+      // Intenta leer la respuesta como texto primero
+      const text = await response.text();
+      console.log('Respuesta del servidor:', text);
+  
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (err) {
+        console.error('No se pudo parsear JSON:', err);
+        alert('Error inesperado del servidor (no JSON válido)');
+        return;
+      }
+  
+      if (response.ok) {
+        alert('Registro exitoso 🎉');
+        window.location.href = '/login';
+      } else {
+        alert('Error: ' + data.error);
+      }
+    } catch (error) {
+      console.error('Error en registro:', error);
+      alert('No se pudo registrar el usuario.');
+    }
   };
+  
+  
+  
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50 relative overflow-hidden">
@@ -197,19 +238,22 @@ const Register = () => {
           </div>
 
           <div className="relative">
-            <label htmlFor="photo" className="block text-sm font-medium text-gray-700 mb-1">Foto de Perfil</label>
+            <label htmlFor="photo" className="block text-sm font-medium text-gray-700 mb-1">
+              URL de Foto de Perfil
+            </label>
             <div className="relative">
-              <PhotoIcon className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
               <input
-                type="file"
+                type="text"
                 id="photo"
-                accept="image/*"
-                onChange={handlePhotoChange}
-                className="w-full pl-10 pr-3 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
-                required
+                value={photo || ''}
+                onChange={(e) => setPhoto(e.target.value)}
+                className="w-full pl-3 pr-3 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition"
+                placeholder="https://ejemplo.com/mi-foto.jpg"
+                
               />
             </div>
           </div>
+
 
           <button
             type="submit"

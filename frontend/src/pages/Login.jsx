@@ -1,14 +1,37 @@
 import React, { useState } from 'react';
 import { UserIcon, LockClosedIcon } from '@heroicons/react/24/outline';
+import { loginUser } from '../services/authService';
 
 const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Login:', { username, password });
+  
+    try {
+      const response = await fetch('http://localhost:4000/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+  
+      const data = await response.json();
+  
+      if (response.ok) {
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        alert('Inicio de sesión exitoso 🧠');
+        window.location.href = '/dashboard'; // redirigir luego
+      } else {
+        alert('Error: ' + data.error);
+      }
+    } catch (error) {
+      console.error('Error en login:', error);
+      alert('No se pudo iniciar sesión.');
+    }
   };
+  
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-green-50 relative overflow-hidden">
