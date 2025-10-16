@@ -2,6 +2,7 @@ const db = require('../db');
 const cognito = require('../middlewares/cognito');
 const { SignUpCommand, InitiateAuthCommand } = require('@aws-sdk/client-cognito-identity-provider');
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 
 exports.register = async (req, res) => {
   try {
@@ -78,15 +79,23 @@ exports.login = async (req, res) => {
     }
 
     const user = result.rows[0];
-    console.log('estoy aqui', user)
+
+    // generar token jwt
+    const jwtPayload = { id_usuario: user.id_usuario, usuario: user.usuario, email: user.email };
+    const jwtOptions = { expiresIn: '2h' };
+    const jwtSecret = process.env.JWT_SECRET;
+    const jwtToken = jwt.sign(jwtPayload, jwtSecret, jwtOptions);
+
     res.json({
       message: 'Inicio de sesión correcto',
       token: idToken,
       refreshToken,
+      jwtToken,
       user: {
         id: user.id_usuario,
         username: user.usuario,
-        email: user.email
+        email: user.email,
+        foto: user.foto
       }
     });
   } catch (err) {
