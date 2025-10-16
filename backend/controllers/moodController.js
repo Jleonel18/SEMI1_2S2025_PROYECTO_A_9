@@ -1,49 +1,28 @@
 const db = require('../db');
 const jwt = require('jsonwebtoken');
-const jwkToPem = require('jwk-to-pem');
-const axios = require('axios');
 
-let cognitoJWKs = null;
-
-// 🔐 Descargar claves públicas de Cognito una sola vez
-async function getCognitoJWKs() {
-  if (cognitoJWKs) return cognitoJWKs;
-  const region = process.env.AWS_REGION;
-  const userPoolId = process.env.COGNITO_USER_POOL_ID;
-  const url = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}/.well-known/jwks.json`;
-  const response = await axios.get(url);
-  cognitoJWKs = response.data.keys;
-  return cognitoJWKs;
-}
-
-// ✅ Verificar el token y obtener datos del usuario
-async function verifyIdToken(token) {
-  const keys = await getCognitoJWKs();
-  const header = JSON.parse(Buffer.from(token.split('.')[0], 'base64').toString('utf8'));
-  const jwk = keys.find(k => k.kid === header.kid);
-  if (!jwk) throw new Error('No se encontró la clave pública del token');
-
-  const pem = jwkToPem(jwk);
-  return new Promise((resolve, reject) => {
-    jwt.verify(token, pem, { algorithms: ['RS256'] }, (err, decoded) => {
-      if (err) reject(err);
-      else resolve(decoded);
-    });
-  });
+// ✅ Verifica el token local (HS256)
+function verifyLocalToken(token) {
+  try {
+    return jwt.verify(token, process.env.JWT_SECRET);
+  } catch (err) {
+    throw new Error('Token inválido o expirado');
+  }
 }
 
 // 🧩 POST /api/save-mood
 exports.saveMood = async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
-    if (!authHeader) return res.status(401).json({ error: 'Falta encabezado Authorization' });
+    if (!authHeader)
+      return res.status(401).json({ error: 'Falta encabezado Authorization' });
 
     const token = authHeader.split(' ')[1];
-    const decoded = await verifyIdToken(token);
+    const decoded = verifyLocalToken(token);
 
-    // ✅ Obtener el identificador real del usuario
-    const username = decoded['cognito:username'] || decoded['email'];
-    if (!username) throw new Error('No se pudo obtener username o email del token');
+    const username = decoded.username || decoded.email;
+    if (!username)
+      throw new Error('No se pudo obtener username o email del token');
 
     const { puntuacion, nota } = req.body;
     if (!puntuacion) {
@@ -66,7 +45,7 @@ exports.saveMood = async (req, res) => {
     const insertResult = await db.query(
       `INSERT INTO mood (user_id, puntuacion, nota)
        VALUES ($1, $2, $3)
-       RETURNING id_mood, fecha, puntuacion, nota`,
+       RETURNING id_mood, to_char(fecha, 'YYYY-MM-DD') as fecha, puntuacion, nota`,
       [user_id, puntuacion, nota || null]
     );
 
@@ -84,13 +63,15 @@ exports.saveMood = async (req, res) => {
 exports.getHistory = async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
-    if (!authHeader) return res.status(401).json({ error: 'Falta encabezado Authorization' });
+    if (!authHeader)
+      return res.status(401).json({ error: 'Falta encabezado Authorization' });
 
     const token = authHeader.split(' ')[1];
-    const decoded = await verifyIdToken(token);
+    const decoded = verifyLocalToken(token);
 
-    const username = decoded['cognito:username'] || decoded['email'];
-    if (!username) throw new Error('No se pudo obtener username o email del token');
+    const username = decoded.username || decoded.email;
+    if (!username)
+      throw new Error('No se pudo obtener username o email del token');
 
     const userResult = await db.query(
       'SELECT id_usuario FROM usuario WHERE usuario = $1 OR email = $1',
@@ -103,16 +84,14 @@ exports.getHistory = async (req, res) => {
 
     const user_id = userResult.rows[0].id_usuario;
 
+    // 🔎 Obtener historial de moods con fecha formateada
     const result = await db.query(
-        `SELECT TO_CHAR(fecha, 'YYYY-MM-DD') AS fecha,
-                puntuacion,
-                nota
-         FROM mood
-         WHERE user_id = $1
-         ORDER BY fecha ASC`,
-        [user_id]
-      );
-      
+      `SELECT to_char(fecha, 'YYYY-MM-DD') as fecha, puntuacion, nota
+       FROM mood
+       WHERE user_id = $1
+       ORDER BY fecha ASC`,
+      [user_id]
+    );
 
     res.json(result.rows);
   } catch (err) {
