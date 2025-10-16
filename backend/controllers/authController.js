@@ -53,7 +53,6 @@ exports.register = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { username, password } = req.body;
-
     // 1. Autenticar usuario en Cognito
     const cognitoParams = {
       AuthFlow: 'USER_PASSWORD_AUTH',
@@ -74,13 +73,12 @@ exports.login = async (req, res) => {
 
     // 3. Buscar usuario en la base de datos
     const result = await db.query('SELECT * FROM Usuario WHERE Usuario = $1', [username]);
-
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Usuario no encontrado en la base de datos' });
     }
 
     const user = result.rows[0];
-
+    console.log('estoy aqui', user)
     res.json({
       message: 'Inicio de sesión correcto',
       token: idToken,

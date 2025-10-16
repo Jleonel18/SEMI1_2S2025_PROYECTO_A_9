@@ -1,37 +1,58 @@
 import React, { useState } from 'react';
 
-const MoodForm = ({ userId, onSaved }) => {
+const MoodForm = ({ onSaved }) => {
   const [score, setScore] = useState(5);
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
 
+    const token = localStorage.getItem('token'); // ✅ se obtiene el token guardado tras login
+    if (!token) {
+      alert('Por favor inicia sesión primero.');
+      return;
+    }
+
+    setLoading(true);
     try {
       const response = await fetch('http://localhost:4000/api/save-mood', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: userId, puntuacion: score, nota: note }),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          puntuacion: Number(score),
+          nota: note.trim(),
+        }),
       });
 
+      const result = await response.json();
       if (response.ok) {
+        alert('Humor guardado correctamente ✅');
         setNote('');
-        onSaved();
+        setScore(5);
+        if (onSaved) onSaved(); // refresca el gráfico
       } else {
-        alert('Error al guardar el humor.');
+        alert('Error al guardar el humor: ' + (result.error || 'Desconocido'));
       }
     } catch (err) {
       console.error('Error en MoodForm:', err);
       alert('No se pudo guardar el humor.');
     }
-
     setLoading(false);
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form
+      onSubmit={handleSubmit}
+      className="bg-white p-6 rounded-2xl shadow-lg space-y-4 mt-6"
+    >
+      <h2 className="text-xl font-semibold text-gray-700 mb-2 text-center">
+        Registra tu humor diario 🌞
+      </h2>
+
       <label className="block text-sm font-medium text-gray-700">
         Califica tu humor (1 = mal, 10 = excelente)
       </label>
@@ -57,7 +78,11 @@ const MoodForm = ({ userId, onSaved }) => {
       <button
         type="submit"
         disabled={loading}
-        className="w-full bg-gradient-to-r from-green-400 to-green-500 text-white py-2 rounded-lg hover:from-green-500 hover:to-green-600 transition duration-300 shadow-md font-medium"
+        className={`w-full text-white py-2 rounded-lg transition duration-300 shadow-md font-medium ${
+          loading
+            ? 'bg-gray-400 cursor-not-allowed'
+            : 'bg-gradient-to-r from-green-400 to-green-500 hover:from-green-500 hover:to-green-600'
+        }`}
       >
         {loading ? 'Guardando...' : 'Guardar Humor'}
       </button>
