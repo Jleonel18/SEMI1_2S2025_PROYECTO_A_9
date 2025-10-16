@@ -1,4 +1,5 @@
 const { CognitoJwtVerifier } = require('aws-jwt-verify');
+const jwt = require('jsonwebtoken');
 
 const verifier = CognitoJwtVerifier.create({
   userPoolId: process.env.COGNITO_USER_POOL_ID,
@@ -11,7 +12,7 @@ const authenticateToken = async (req, res, next) => {
   if (!token) return res.status(401).json({ error: 'Token no proporcionado' });
 
   try {
-    const payload = await verifier.verify(token);
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
     req.user = payload; // Contiene información del usuario
     next();
   } catch (err) {
@@ -19,5 +20,6 @@ const authenticateToken = async (req, res, next) => {
     res.status(403).json({ error: 'Token inválido' });
   }
 };
+
 
 module.exports = authenticateToken;

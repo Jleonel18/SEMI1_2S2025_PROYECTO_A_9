@@ -19,7 +19,7 @@ const Login = () => {
       const data = await response.json();
   
       if (response.ok) {
-        localStorage.setItem('token', data.token);
+        localStorage.setItem('token', data.jwtToken);
         localStorage.setItem('user', JSON.stringify(data.user));
         alert('Inicio de sesión exitoso 🧠');
         window.location.href = '/dashboard'; // redirigir luego
