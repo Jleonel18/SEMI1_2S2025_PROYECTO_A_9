@@ -1,4 +1,3 @@
-// src/components/AudioUpload.jsx (actualizado)
 import React, { useState, useRef } from 'react';
 import { MicrophoneIcon, ArrowUpTrayIcon, StopIcon, PlayIcon, PauseIcon } from '@heroicons/react/24/solid';
 
@@ -124,7 +123,44 @@ const AudioUpload = ({ user, onUploadSuccess }) => {
           throw new Error('Fallo al guardar en la base de datos.');
         }
 
-        setUploadStatus('¡Audio subido con éxito! El análisis de emociones estará disponible pronto.');
+        const datafile = await dbResponse.json();
+
+        // Llamar a la Lambda de análisis
+        const analyzeResponse = await fetch('https://b0d6e55g4b.execute-api.us-east-2.amazonaws.com/default/analisar', { // Ajusta la URL
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ file_url: url }),
+        });
+
+        if (!analyzeResponse.ok) {
+          throw new Error('Fallo al analizar el audio.');
+        }
+
+        const analysisData = await analyzeResponse.json();
+        const { transcription, sentiment, scores, status, recommendation } = analysisData;
+        console.log('Análisis recibido:', datafile);
+        console.log('Análisis recibido:', analysisData);
+        // Enviar resultados al backend para guardarlos
+        const saveResponse = await fetch('http://localhost:4000/api/analisis/guardar-analisis', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            file_id: datafile.file.id_file, // Ajusta según tu lógica (puede que necesites el id de files)
+            transcription,
+            sentiment_result: { sentiment, scores },
+            recommendation,
+            status,
+          }),
+        });
+
+        if (!saveResponse.ok) {
+          throw new Error('Fallo al guardar el análisis en la base de datos.');
+        }
+
+        setUploadStatus('¡Audio subido y analizado con éxito! Consulta tu diario para los resultados.');
         setAudioFile(null);
         setRecordedBlob(null);
         if (playbackUrlRef.current) {

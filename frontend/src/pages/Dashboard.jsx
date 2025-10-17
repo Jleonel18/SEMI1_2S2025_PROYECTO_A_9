@@ -3,6 +3,7 @@ import { ChartBarIcon, HeartIcon, FaceSmileIcon, MicrophoneIcon, DocumentTextIco
 import MoodForm from './MoodForm';
 import MoodChart from './MoodChart';
 import AudioUpload from '../components/AudioUpload'; // Nuevo componente separado para la subida de audio
+import DiarySection from '../components/DiarySection'; // Ajusta la ruta si es necesario
 
 const Dashboard = () => {
   const [user, setUser] = useState(null);
@@ -106,17 +107,7 @@ const Dashboard = () => {
         )}
 
         {activeTab === 'diary' && (
-          <div className="bg-white shadow-lg rounded-2xl p-6 border border-gray-100">
-            <div className="flex items-center mb-4">
-              <DocumentTextIcon className="h-8 w-8 text-blue-500 mr-2" />
-              <h3 className="text-xl font-semibold text-gray-700">Entradas de Diario Anteriores</h3>
-            </div>
-            <p className="text-gray-500 mb-4 text-sm">
-              Aquí podrás ver análisis futuros de emociones basados en tus audios y textos (próximamente).
-            </p>
-            {/* Placeholder para lista de diarios o análisis */}
-            <div className="text-center text-gray-400">No hay entradas aún. ¡Comienza registrando tu humor!</div>
-          </div>
+          <DiarySection user={user} onRefresh={() => setRefresh(!refresh)} />
         )}
       </div>
     </div>

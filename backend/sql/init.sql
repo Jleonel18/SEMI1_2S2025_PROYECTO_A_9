@@ -26,4 +26,17 @@ CREATE TABLE files (
     upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+
+CREATE TABLE analyses (
+    id_analyses SERIAL PRIMARY KEY,
+    file_id INTEGER NOT NULL REFERENCES files(id) ON DELETE CASCADE,  -- FK a file subido
+    User_Id INTEGER NOT NULL REFERENCES Usuario(Id_Usuario) ON DELETE CASCADE,
+    statusAnalysis TEXT ,
+    sentiment_result JSONB,  -- Resultado de Comprehend (ej. {"Sentiment": "NEGATIVE", "Scores": {...}})
+    transcription TEXT,  -- Texto transcrito de Transcribe (para audios)
+    recommendation TEXT,  -- Recomendación generada (ej. 'Prueba ejercicio de respiración')
+    analysis_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE INDEX idx_user_key ON files (User_Id, file_key);
+CREATE INDEX idx_file_date ON analyses (file_id, analysis_date);
