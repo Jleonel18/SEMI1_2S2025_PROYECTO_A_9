@@ -15,6 +15,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/files', filesRoutes);
 app.use('/api', moodRoutes);
 app.use('/api/analisis', analyzeRoutes);
+app.use('/api/listado', analyzeRoutes); // Agrega esta línea para las rutas de análisis
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => console.log(`Servidor corriendo en puerto ${PORT}`));

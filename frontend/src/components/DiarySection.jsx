@@ -1,37 +1,48 @@
 import React, { useState, useEffect } from 'react';
-import { DocumentTextIcon } from '@heroicons/react/24/solid';
+import { DocumentTextIcon, ChevronDownIcon } from '@heroicons/react/24/solid';
 
 const DiarySection = ({ user, onRefresh }) => {
-  const [audios, setAudios] = useState([]);
-  const [result, setResult] = useState(null);
+  const [analyses, setAnalyses] = useState([]);
+  const [expanded, setExpanded] = useState({});
+  const [error, setError] = useState(null); // Añadimos el estado para errores
 
   useEffect(() => {
-    fetchAudios();
+    fetchAnalyses();
   }, [user.id, onRefresh]);
 
-  const fetchAudios = async () => {
+  const fetchAnalyses = async () => {
     try {
-      const response = await fetch(`/analyze/get-user-audios?user_id=${user.id}`);
-      if (!response.ok) throw new Error('Error fetching audios');
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error('No token available');
+      const response = await fetch(`http://localhost:4000/api/listado/get-user-analyses`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+      }
       const data = await response.json();
-      setAudios(data);
+      setAnalyses(data);
+      setError(null); // Limpiamos el error si la solicitud es exitosa
     } catch (err) {
-      console.error('Error fetching audios:', err);
+      console.error('Error fetching analyses:', err);
+      setError(err.message); // Guardamos el mensaje de error
     }
   };
 
-  const analyzeAudio = async (audioId) => {
-    try {
-      const response = await fetch('/analyze/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ audio_id: audioId }),
-      });
-      if (!response.ok) throw new Error('Error analyzing audio');
-      const data = await response.json();
-      setResult(data);
-    } catch (err) {
-      console.error('Error analyzing audio:', err);
+  const toggleExpand = (id) => {
+    setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const getSentimentColor = (sentiment) => {
+    switch (sentiment) {
+      case 'POSITIVE': return 'bg-green-100 text-green-800';
+      case 'NEGATIVE': return 'bg-red-100 text-red-800';
+      case 'NEUTRAL': return 'bg-gray-100 text-gray-800';
+      case 'MIXED': return 'bg-yellow-100 text-yellow-800';
+      default: return 'bg-blue-100 text-blue-800';
     }
   };
 
@@ -42,27 +53,46 @@ const DiarySection = ({ user, onRefresh }) => {
         <h3 className="text-xl font-semibold text-gray-700">Entradas de Diario Anteriores</h3>
       </div>
       <p className="text-gray-500 mb-4 text-sm">
-        Aquí podrás ver análisis de emociones basados en tus audios.
+        Descubre insights emocionales de tus audios con un diseño innovador: tarjetas interactivas, colores intuitivos y recomendaciones personalizadas para un viaje de autodescubrimiento sereno.
       </p>
-      <ul className="list-disc pl-5">
-        {audios.map((audio) => (
-          <li
-            key={audio.Id_File}
-            className="cursor-pointer text-blue-600 hover:text-blue-800"
-            onClick={() => analyzeAudio(audio.Id_File)}
-          >
-            {audio.file_key} - {new Date(audio.upload_date).toLocaleDateString()}
-          </li>
-        ))}
-      </ul>
-      {!audios.length && (
-        <div className="text-center text-gray-400">No hay entradas aún. ¡Sube un audio para comenzar!</div>
+      {error && (
+        <div className="text-red-600 text-center mb-4">{error}</div> // Mostramos el error al usuario
       )}
-      {result && (
-        <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-          <p className="font-medium">Estado: {result.status}</p>
-          <p className="text-gray-600">Recomendación: {result.recommendation}</p>
+      {analyses.length > 0 ? (
+        <div className="space-y-4">
+          {analyses.map((analysis) => (
+            <div key={analysis.id_analyses} className="bg-gradient-to-r from-blue-50 to-green-50 p-4 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
+              <div className="flex items-center justify-between cursor-pointer" onClick={() => toggleExpand(analysis.id_analyses)}>
+                <div className="flex items-center">
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getSentimentColor(analysis.sentiment_result.sentiment)}`}>
+                    {analysis.sentiment_result.sentiment}
+                  </span>
+                  <span className="ml-2 text-sm text-gray-600">{analysis.file_key}</span>
+                </div>
+                <div className="flex items-center text-gray-500 text-sm">
+                  <span>{new Date(analysis.analysis_date).toLocaleDateString()}</span>
+                  <ChevronDownIcon className={`h-5 w-5 ml-2 transition-transform ${expanded[analysis.id_analyses] ? 'rotate-180' : ''}`} />
+                </div>
+              </div>
+              {expanded[analysis.id_analyses] && (
+                <div className="mt-4 text-sm text-gray-700 animate-fadeIn">
+                  <p><strong>Transcripción:</strong> {analysis.transcription}</p>
+                  <p><strong>Estado:</strong> {analysis.statusanalysis}</p>
+                  <p><strong>Recomendación:</strong> {analysis.recommendation}</p>
+                  <p><strong>Puntuaciones:</strong></p>
+                  <ul className="list-disc pl-5">
+                    <li>Positivo: {(analysis.sentiment_result.scores.Positive * 100).toFixed(2)}%</li>
+                    <li>Negativo: {(analysis.sentiment_result.scores.Negative * 100).toFixed(2)}%</li>
+                    <li>Neutral: {(analysis.sentiment_result.scores.Neutral * 100).toFixed(2)}%</li>
+                    <li>Mixto: {(analysis.sentiment_result.scores.Mixed * 100).toFixed(2)}%</li>
+                  </ul>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
+      ) : (
+        <div className="text-center text-gray-400">No hay entradas aún. ¡Sube un audio para comenzar!</div>
       )}
     </div>
   );
