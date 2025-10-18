@@ -29,7 +29,7 @@ CREATE TABLE files (
 
 CREATE TABLE analyses (
     id_analyses SERIAL PRIMARY KEY,
-    file_id INTEGER NOT NULL REFERENCES files(id) ON DELETE CASCADE,  -- FK a file subido
+    file_id INTEGER NOT NULL REFERENCES files(Id_File) ON DELETE CASCADE,  -- FK a file subido
     User_Id INTEGER NOT NULL REFERENCES Usuario(Id_Usuario) ON DELETE CASCADE,
     statusAnalysis TEXT ,
     sentiment_result JSONB,  -- Resultado de Comprehend (ej. {"Sentiment": "NEGATIVE", "Scores": {...}})
