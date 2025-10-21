@@ -8,7 +8,7 @@ const MoodForm = ({ onSaved }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const token = localStorage.getItem('token'); // ✅ se obtiene el token guardado tras login
+    const token = localStorage.getItem('token');
     if (!token) {
       alert('Por favor inicia sesión primero.');
       return;
@@ -30,10 +30,24 @@ const MoodForm = ({ onSaved }) => {
 
       const result = await response.json();
       if (response.ok) {
-        alert('Humor guardado correctamente ✅');
+        alert('Humor guardado correctamente');
+
+        // Mapea score a moodLevel
+        let moodLevel = 'neutral';
+        if (score <= 3) moodLevel = 'negative';
+        else if (score >= 8) moodLevel = 'positive';
+
+        // ACTUALIZA EL USUARIO EN localStorage
+        const userData = localStorage.getItem('user');
+        if (userData) {
+          const user = JSON.parse(userData);
+          user.moodLevel = moodLevel;
+          localStorage.setItem('user', JSON.stringify(user));
+        }
+
         setNote('');
         setScore(5);
-        if (onSaved) onSaved(); // refresca el gráfico
+        if (onSaved) onSaved(); // refresca gráfico
       } else {
         alert('Error al guardar el humor: ' + (result.error || 'Desconocido'));
       }
@@ -50,7 +64,7 @@ const MoodForm = ({ onSaved }) => {
       className="bg-white p-6 rounded-2xl shadow-lg space-y-4 mt-6"
     >
       <h2 className="text-xl font-semibold text-gray-700 mb-2 text-center">
-        Registra tu humor diario 🌞
+        Registra tu humor diario
       </h2>
 
       <label className="block text-sm font-medium text-gray-700">

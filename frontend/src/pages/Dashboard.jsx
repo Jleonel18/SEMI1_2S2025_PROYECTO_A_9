@@ -1,20 +1,36 @@
 import React, { useState, useEffect } from 'react';
-import { ChartBarIcon, HeartIcon, FaceSmileIcon, MicrophoneIcon, DocumentTextIcon, CalendarIcon } from '@heroicons/react/24/solid';
+import { 
+  ChartBarIcon, 
+  HeartIcon, 
+  FaceSmileIcon, 
+  MicrophoneIcon, 
+  DocumentTextIcon, 
+  CalendarIcon 
+} from '@heroicons/react/24/solid';
 import MoodForm from './MoodForm';
 import MoodChart from './MoodChart';
-import AudioUpload from '../components/AudioUpload'; // Nuevo componente separado para la subida de audio
-import DiarySection from '../components/DiarySection'; // Ajusta la ruta si es necesario
+import AudioUpload from '../components/AudioUpload';
+import DiarySection from '../components/DiarySection';
+import Chatbot from '../components/Chatbot'; // Importado correctamente
 
 const Dashboard = () => {
   const [user, setUser] = useState(null);
   const [refresh, setRefresh] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview'); // Tabs para separar secciones y mejorar organización
+  const [activeTab, setActiveTab] = useState('overview');
 
+  // Carga el usuario y moodLevel desde localStorage
   useEffect(() => {
     const userData = localStorage.getItem('user');
-    if (userData) setUser(JSON.parse(userData));
+    if (userData) {
+      const parsed = JSON.parse(userData);
+      setUser({
+        ...parsed,
+        moodLevel: parsed.moodLevel || 'neutral' // Asegura moodLevel
+      });
+    }
   }, []);
 
+  // Si no hay usuario, muestra pantalla de carga
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50">
@@ -45,32 +61,55 @@ const Dashboard = () => {
           ¡Hola, <span className="text-green-600">{user.username}</span>! 
         </h2>
 
-        {/* Tabs para navegación calmada y organizada */}
-        <div className="flex space-x-4 mb-8 border-b border-gray-200">
+        {/* Tabs */}
+        <div className="flex flex-wrap space-x-4 mb-8 border-b border-gray-200">
           <button
             onClick={() => setActiveTab('overview')}
-            className={`pb-2 px-4 font-medium transition ${activeTab === 'overview' ? 'text-green-600 border-b-2 border-green-600' : 'text-gray-600 hover:text-green-600'}`}
+            className={`pb-2 px-4 font-medium transition whitespace-nowrap ${
+              activeTab === 'overview' 
+                ? 'text-green-600 border-b-2 border-green-600' 
+                : 'text-gray-600 hover:text-green-600'
+            }`}
           >
             Resumen
           </button>
           <button
             onClick={() => setActiveTab('audio')}
-            className={`pb-2 px-4 font-medium transition ${activeTab === 'audio' ? 'text-green-600 border-b-2 border-green-600' : 'text-gray-600 hover:text-green-600'}`}
+            className={`pb-2 px-4 font-medium transition whitespace-nowrap ${
+              activeTab === 'audio' 
+                ? 'text-green-600 border-b-2 border-green-600' 
+                : 'text-gray-600 hover:text-green-600'
+            }`}
           >
             Audio Diario
           </button>
           <button
             onClick={() => setActiveTab('diary')}
-            className={`pb-2 px-4 font-medium transition ${activeTab === 'diary' ? 'text-green-600 border-b-2 border-green-600' : 'text-gray-600 hover:text-green-600'}`}
+            className={`pb-2 px-4 font-medium transition whitespace-nowrap ${
+              activeTab === 'diary' 
+                ? 'text-green-600 border-b-2 border-green-600' 
+                : 'text-gray-600 hover:text-green-600'
+            }`}
           >
             Diario Escrito
           </button>
+          <button
+            onClick={() => setActiveTab('therapy')}
+            className={`pb-2 px-4 font-medium transition whitespace-nowrap ${
+              activeTab === 'therapy' 
+                ? 'text-green-600 border-b-2 border-green-600' 
+                : 'text-gray-600 hover:text-green-600'
+            }`}
+          >
+            Terapia
+          </button>
         </div>
 
+        {/* === PESTAÑA: RESUMEN === */}
         {activeTab === 'overview' && (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-              {/* Formulario de humor diario */}
+              {/* Formulario de humor */}
               <div className="bg-white shadow-lg rounded-2xl p-6 border border-gray-100">
                 <div className="flex items-center mb-4">
                   <FaceSmileIcon className="h-8 w-8 text-green-500 mr-2" />
@@ -79,10 +118,13 @@ const Dashboard = () => {
                 <p className="text-gray-500 mb-4 text-sm">
                   Evalúa cómo te sientes hoy y escribe una breve nota sobre tu día.
                 </p>
-                <MoodForm userId={user.id} onSaved={() => setRefresh(!refresh)} />
+                <MoodForm 
+                  userId={user.id} 
+                  onSaved={() => setRefresh(!refresh)} 
+                />
               </div>
 
-              {/* Gráfico de progreso semanal */}
+              {/* Gráfico de progreso */}
               <div className="bg-white shadow-lg rounded-2xl p-6 border border-gray-100">
                 <div className="flex items-center mb-4">
                   <ChartBarIcon className="h-8 w-8 text-blue-500 mr-2" />
@@ -102,12 +144,34 @@ const Dashboard = () => {
           </>
         )}
 
+        {/* === PESTAÑA: AUDIO DIARIO === */}
         {activeTab === 'audio' && (
           <AudioUpload user={user} onUploadSuccess={() => setRefresh(!refresh)} />
         )}
 
+        {/* === PESTAÑA: DIARIO ESCRITO === */}
         {activeTab === 'diary' && (
           <DiarySection user={user} onRefresh={() => setRefresh(!refresh)} />
+        )}
+
+        {/* === PESTAÑA: TERAPIA VIRTUAL === */}
+        {activeTab === 'therapy' && (
+          <div className="max-w-2xl mx-auto">
+            <div className="bg-white shadow-lg rounded-2xl p-6 border border-gray-100">
+              <div className="flex items-center mb-6">
+                <HeartIcon className="h-8 w-8 text-pink-500 mr-2" />
+                <h3 className="text-xl font-semibold text-gray-700">Terapia Virtual</h3>
+              </div>
+              <p className="text-gray-500 mb-6 text-sm">
+                Habla con tu terapeuta virtual. Todo es confidencial y seguro.
+              </p>
+              <Chatbot 
+                userId={user.id} 
+                moodLevel={user.moodLevel}           // Usa moodLevel real
+                sessionId={`user_${user.id}`}         // sessionId válido para Lex
+              />
+            </div>
+          </div>
         )}
       </div>
     </div>
